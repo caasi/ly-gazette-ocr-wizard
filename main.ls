@@ -1,48 +1,12 @@
+require! OCRIssues: \./ocr-issues
+
 requests = {}
 
-require! GitHubApi: \github
-github = new GitHubApi version: \3.0.0
-github.authenticate require \./config-github
-
-# inspired by g0v/twlyparser/github.ls
-class OCRIssues
-  issues: []
-  last-update: 0
-  update: (cb) ->
-    next = (err, res) ~>
-      if err?
-        console.log "[GITHUB]: " + err
-        return
-      console.log "[GITHUB]: request a page of issues"
-      for issue in res
-        title-pattern = /gazette (\d+) \- \d+ images/g
-        link-pattern = /\!\[source\/.*\/(.*)\.(.*)\]\(\/\/(.*)\)/g
-        if id = title-pattern.exec(issue.title)?[1]
-          @issues[issue.number] =
-            id: id
-            images: []
-          while (links = link-pattern.exec issue.body)?
-            @issues[issue.number].images.push links{filename: 1, ext: 2, url: 3}
-      if github.has-next-page res
-        github.get-next-page res, next
-      else
-        @last-update = Date.now!
-        cb res.meta
-    github.issues.repoIssues {
-      user: \g0v
-      repo: \ly-gazette
-      labels: \OCR
-      state: \open
-      sort: \created
-      direction: \asc
-      per_page: 100
-    }, next
-
-issues = new OCRIssues
+ocr = new OCRIssues require \./config-github
 
 do
-  meta <- issues.update
-  console.log "[OCRWizard]: got " + issues.issues.length + " issues"
+  meta <- ocr.update
+  console.log "[OCRWizard]: got " + ocr.issues.length + " issues"
   main!
 
 main = ->
@@ -75,14 +39,24 @@ main = ->
 
   do
     req, res <- app.post \/
-    console.log req.body
+    # http://stackoverflow.com/questions/46155/validate-email-address-in-javascript
+    pattern-email = /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/
+    unless pattern-email.test req.body.mail
+      console.log "[MAIL]: " + req.body.mail + " is not a valid email"
+      res.send \false
+      return
+    unless ocr.issues.length
+      console.log "[OCRWizard]: yeah! there are no ocr issues, or maybe you should check the connection"
+      res.send \false
+      return
+
     # find a random issue with at least one image
     do
-      issue = (Object.keys pages)[~~(do Math.random * *)]
-    until pages[issue].images.length
-    url = pages[issue].images[~~(do Math.random * *)].url
+      id = (Object.keys ocr.issues)[~~(do Math.random * *)]
+    until ocr.issues[id].images.length
+    url = ocr.issues[id].images[~~(do Math.random * *)].url
 
-    err, html <- res.render \random, url: url
+    err, html <- res.render \mail, url: url
     if err?
       console.log "[VIEW]: " + err
       res.send \false
@@ -91,18 +65,18 @@ main = ->
     err, msg <- server.send do
       from: config-mail.user + "@gmail.com",
       to: config-mail.user + "@gmail.com",
-      subject: "test mail"
+      subject: "公報 OCR 小幫手"
       text: "image url: " + url
-      attachment: [
-        data: html
-        alternative: true
-      ]
+      attachment:
+        * data: html
+          alternative: true
+        ...
     if err?
       console.log "[MAIL]: " + err
       res.send \false
       return
 
-    console.log msg
+    console.log "[MAIL]: " + msg
     res.send \true
 
   # gazette sniper
@@ -111,15 +85,15 @@ main = ->
   do
     req, res <- app.get \/sniper/target/
     do
-      issue = (Object.keys pages)[~~(do Math.random * *)]
-    until pages[issue].images.length
+      id = (Object.keys ocr.issues)[~~(do Math.random * *)]
+    until ocr.issues[id].images.length
     shasum = crypto.createHash "sha1"
     shasum.update do Date.now + issue
     token = shasum.digest \hex # as a key for result
     requests[token] =
       issue: issue
-      index: ~~(do Math.random * pages[issue].images.length)
-    res.send JSON.stringify token: token, target: pages[requests[token].issue].images[requests[token].index].url
+      index: ~~(do Math.random * ocr.issues[id].images.length)
+    res.send JSON.stringify token: token, target: ocr.issues[requests[token].issue].images[requests[token].index].url
 
   do
     req, res <- app.get \/sniper/:token/:x/:y/:char
