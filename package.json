@@ -1,0 +1,29 @@
+{
+  "name": "ly-gazette-ocr-wizard",
+  "version": "0.0.1",
+  "description": "This is a ly-gazette OCR helper for non-geeks.",
+  "main": "main.ls",
+  "dependencies": {
+    "express-params": "~0.0.3",
+    "connect-assets": "~2.3.3",
+    "github": "~0.1.8",
+    "express": "~3.0.6",
+    "emailjs": "~0.3.4",
+    "jade": "~0.28.1"
+  },
+  "devDependencies": {
+    "LiveScript": "~1.1.1"
+  },
+  "scripts": {
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/caasi/ly-gazette-ocr-wizard.git"
+  },
+  "keywords": [
+    "ly-gazette"
+  ],
+  "author": "caasi Huang",
+  "license": "BSD",
+  "readmeFilename": "README.md"
+}
