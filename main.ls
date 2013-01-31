@@ -1,4 +1,5 @@
 require! OCRIssues: \./ocr-issues
+config = require \./config
 
 requests = {}
 
@@ -19,9 +20,6 @@ main = ->
   app.use express.bodyParser!
   app.use express.static __dirname + \/public
   app.param \token /^[0-9A-Fa-f]{40}$/
-  app.param \x /\d/
-  app.param \y /\d/
-  app.param \char /./
 
   # static pages
   # TODO:
@@ -43,12 +41,18 @@ main = ->
     # http://stackoverflow.com/questions/46155/validate-email-address-in-javascript
     pattern-email = /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/
     unless pattern-email.test req.body.mail
-      console.log "[ERROR]: " + req.body.mail + " is not a valid email"
-      res.send JSON.stringify(message: "Not a valid email"), 400
+      result =
+        message: "Not a valid email"
+        more:
+          mail: req.body.mail
+      console.log result
+      res.send JSON.stringify(result{message: message}), 400
       return
     unless ocr.issues.length
-      console.log "[ERROR]: no issues now, or connection problem"
-      res.send JSON.stringify(message: "No issues now"), 500
+      result =
+        message: "No issues now"
+      console.log result
+      res.send JSON.stringify(result{message: message}), 500
       return
 
     # find a random issue with at least one image
@@ -61,29 +65,37 @@ main = ->
     token = shasum.digest \hex
 
     requests[token] =
-      host: req.headers.host
+      host: config.host
       token: token
       mail: req.body.mail
       image: url
 
     err, html <- res.render \mail, requests[token]
     if err?
-      console.log "[VIEW]: " + err
-      res.send JSON.stringify(message: "Server error"), 500
+      result =
+        message: "Server error"
+        more:
+          detail: err
+      console.log result
+      res.send JSON.stringify(result{message: message}), 500
       return
 
     err, msg <- mail-server.send do
       from: config-mail.user + \@gmail.com
       to: config-mail.user + \@gmail.com
-      subject: "[公報 OCR] 謝謝您的協助"
+      subject: "[公報 OCR ] 謝謝您的協助"
       text: "image url: " + url
       attachment:
         * data: html
           alternative: true
         ...
     if err?
-      console.log "[MAIL]: " + JSON.stringify err
-      res.send JSON.stringify(message: "Server error"), 500
+      result =
+        message: "Server error"
+        more:
+          detail: err
+      console.log result
+      res.send JSON.stringify(result{message: message}), 500
       return
 
     console.log "[MAIL]: send image to " + requests[token].mail
@@ -95,7 +107,12 @@ main = ->
     if request?
       res.render \submit, request
     else
-      res.send JSON.stringify(message: "Not found"), 404
+      result =
+        message: "Not found"
+        more:
+          detail: "unknown token"
+      console.log result
+      res.send JSON.stringify(result{message: message}), 404
 
   do
     req, res <- app.post \/:token
@@ -106,28 +123,43 @@ main = ->
       err, html <- res.render \result, request
       if err?
         console.log "[VIEW]: " + err
-        res.send JSON.stringify(message: "Server error"), 500
+        result =
+          message: "Server error"
+          more:
+            detail: err
+        console.log result
+        res.send JSON.stringify(result{message: message}), 500
         return
       err, msg <- mail-server.send do
         from: config-mail.user + \@gmail.com
         to: config-mail.user + \@gmail.com
-        subject: "[公報 OCR] 來自 " + request.mail + " 的結果"
+        subject: "[公報 OCR ] 來自 " + request.mail + " 的結果"
         text: "result: " + result
         attachment:
           * data: html
             alternative: true
           ...
       if err?
-        console.log "[MAIL]: " + JSON.stringify err
-        res.send JSON.stringify(message: "Server error"), 500
+        result =
+          message: "Server error"
+          more:
+            detail: err
+        console.log result
+        res.send JSON.stringify(result{message: message}), 500
         return
       console.log "[MAIL]: send result to " + config-mail.user
       res.send \true
     else
-      res.send JSON.stringify(message: "Not found"), 404
+      result =
+        message: "Not found"
+        more:
+          detail: "unknown token"
+      console.log result
+      res.send JSON.stringify(result{message: message}), 404
 
+  # deprecated
   # gazette sniper
-
+  /*
   do
     req, res <- app.get \/sniper/target/
     do
@@ -147,6 +179,7 @@ main = ->
       # save result somewhere
       delete requests[req.params.token]
     res.send \true
+  */
 
   # ready to move out
   app.listen 3000

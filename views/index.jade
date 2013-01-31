@@ -1,8 +1,9 @@
 extends layout
 
 block content
-  form(method="POST")
-    input(type="text", id="mail", name="mail", placeholder="email")
-    input(type="submit", value="給我公報圖片")
-  p
-    a(href="#") 給我一大堆公報圖片
+  #wrap
+    form#request(method="POST")
+      input#mail(type="text", name="mail", placeholder="email")
+      button#submit 給我公報圖片
+    p
+      a#why(href="#", target="_blank") 為什麼需要您的協助？
