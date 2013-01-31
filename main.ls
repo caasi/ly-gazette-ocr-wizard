@@ -43,12 +43,12 @@ main = ->
     # http://stackoverflow.com/questions/46155/validate-email-address-in-javascript
     pattern-email = /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/
     unless pattern-email.test req.body.mail
-      console.log "[MAIL]: " + req.body.mail + " is not a valid email"
-      res.send \false
+      console.log "[ERROR]: " + req.body.mail + " is not a valid email"
+      res.send JSON.stringify(message: "Not a valid email"), 400
       return
     unless ocr.issues.length
-      console.log "[OCRWizard]: yeah! there are no ocr issues, or maybe you should check the connection"
-      res.send \error, 500
+      console.log "[ERROR]: no issues now, or connection problem"
+      res.send JSON.stringify(message: "No issues now"), 500
       return
 
     # find a random issue with at least one image
@@ -69,7 +69,7 @@ main = ->
     err, html <- res.render \mail, requests[token]
     if err?
       console.log "[VIEW]: " + err
-      res.send \error, 500
+      res.send JSON.stringify(message: "Server error"), 500
       return
 
     err, msg <- mail-server.send do
@@ -83,11 +83,11 @@ main = ->
         ...
     if err?
       console.log "[MAIL]: " + JSON.stringify err
-      res.send \error, 500
+      res.send JSON.stringify(message: "Server error"), 500
       return
 
     console.log "[MAIL]: send image to " + requests[token].mail
-    res.send \true
+    res.send JSON.stringify true
 
   do
     req, res <- app.get \/:token
@@ -95,7 +95,7 @@ main = ->
     if request?
       res.render \submit, request
     else
-      res.send "not found", 404
+      res.send JSON.stringify(message: "Not found"), 404
 
   do
     req, res <- app.post \/:token
@@ -106,7 +106,7 @@ main = ->
       err, html <- res.render \result, request
       if err?
         console.log "[VIEW]: " + err
-        res.send \error, 500
+        res.send JSON.stringify(message: "Server error"), 500
         return
       err, msg <- mail-server.send do
         from: config-mail.user + \@gmail.com
@@ -119,12 +119,12 @@ main = ->
           ...
       if err?
         console.log "[MAIL]: " + JSON.stringify err
-        res.send \error, 500
+        res.send JSON.stringify(message: "Server error"), 500
         return
       console.log "[MAIL]: send result to " + config-mail.user
       res.send \true
     else
-      res.send "not found", 404
+      res.send JSON.stringify(message: "Not found"), 404
 
   # gazette sniper
 
