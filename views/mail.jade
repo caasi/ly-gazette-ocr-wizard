@@ -2,6 +2,7 @@ extends layout
 
 block content
   h1 謝謝您協助輸入立法院公報
-  img(src="https://#{url}", style="max-width: 640px")
+  a(href="https://#{image}", target="_blank")
+    img(src="https://#{image}", style="max-height: 240px")
   p 請在十天內，將結果貼到以下連結：
-  a(src="#", target="_blank")
+  a(href="http://#{host}/#{token}", target="_blank") http://#{host}/#{token}

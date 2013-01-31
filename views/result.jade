@@ -1,0 +1,9 @@
+extends layout
+
+block content
+  a(href="#", target="_blank") issue
+  a(href="https://#{image}", target="_blank")
+    img(src="https://#{image}", style="max-height: 240px")
+  p 由#{mail}送回來的內容：
+  pre
+    code #{result}

@@ -35,7 +35,8 @@ main = ->
   # manual OCR
   require! email: \emailjs/email
   require! config-mail: \./config-mail
-  server = email.server.connect config-mail
+  require! crypto
+  mail-server = email.server.connect config-mail
 
   do
     req, res <- app.post \/
@@ -47,7 +48,7 @@ main = ->
       return
     unless ocr.issues.length
       console.log "[OCRWizard]: yeah! there are no ocr issues, or maybe you should check the connection"
-      res.send \false
+      res.send \error, 500
       return
 
     # find a random issue with at least one image
@@ -55,32 +56,77 @@ main = ->
       id = (Object.keys ocr.issues)[~~(do Math.random * *)]
     until ocr.issues[id].images.length
     url = ocr.issues[id].images[~~(do Math.random * *)].url
+    shasum = crypto.createHash \sha1
+    shasum.update url + Date.now!
+    token = shasum.digest \hex
 
-    err, html <- res.render \mail, url: url
+    requests[token] =
+      host: req.headers.host
+      token: token
+      mail: req.body.mail
+      image: url
+
+    err, html <- res.render \mail, requests[token]
     if err?
       console.log "[VIEW]: " + err
-      res.send \false
+      res.send \error, 500
       return
 
-    err, msg <- server.send do
-      from: config-mail.user + "@gmail.com",
-      to: config-mail.user + "@gmail.com",
-      subject: "公報 OCR 小幫手"
+    err, msg <- mail-server.send do
+      from: config-mail.user + \@gmail.com
+      to: config-mail.user + \@gmail.com
+      subject: "[公報 OCR] 謝謝您的協助"
       text: "image url: " + url
       attachment:
         * data: html
           alternative: true
         ...
     if err?
-      console.log "[MAIL]: " + err
-      res.send \false
+      console.log "[MAIL]: " + JSON.stringify err
+      res.send \error, 500
       return
 
-    console.log "[MAIL]: " + msg
+    console.log "[MAIL]: send image to " + requests[token].mail
     res.send \true
 
+  do
+    req, res <- app.get \/:token
+    request = requests[req.params.token]
+    if request?
+      res.render \submit, request
+    else
+      res.send "not found", 404
+
+  do
+    req, res <- app.post \/:token
+    request = requests[req.params.token]
+    if request?
+      result = req.body.result
+      request.result = result
+      err, html <- res.render \result, request
+      if err?
+        console.log "[VIEW]: " + err
+        res.send \error, 500
+        return
+      err, msg <- mail-server.send do
+        from: config-mail.user + \@gmail.com
+        to: config-mail.user + \@gmail.com
+        subject: "[公報 OCR] 來自 " + request.mail + " 的結果"
+        text: "result: " + result
+        attachment:
+          * data: html
+            alternative: true
+          ...
+      if err?
+        console.log "[MAIL]: " + JSON.stringify err
+        res.send \error, 500
+        return
+      console.log "[MAIL]: send result to " + config-mail.user
+      res.send \true
+    else
+      res.send "not found", 404
+
   # gazette sniper
-  require! crypto
 
   do
     req, res <- app.get \/sniper/target/
