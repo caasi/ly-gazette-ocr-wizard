@@ -1,8 +1,27 @@
+html, body, #wrap {
+  height: 100%;
+}
+
 #wrap {
+  position: relative;
   width: 440px;
   margin: 0 auto;
 }
 
+#request, #why {
+  position: absolute;
+}
+
 #request {
-  margin-top: 240px;
+  top: 50%;
+  margin-top: -1.25em;
+}
+
+#why {
+  top: 50%;
+  margin-top: 1.25em;
+}
+
+#submit {
+  width: 200px
 }
