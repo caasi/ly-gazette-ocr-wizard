@@ -7,7 +7,7 @@ ocr = new OCRIssues require \./config-github
 
 do
   meta <- ocr.update
-  console.log "[OCRWizard]: got " + ocr.issues.length + " issues"
+  console.log "[OCRWizard]: got " + Object.keys(ocr.issues).length + " issues"
   main!
 
 main = ->
@@ -65,12 +65,9 @@ main = ->
       res.send JSON.stringify(result{message: message}), 500
       return
 
-    # Find a random issue with at least one image, not a good idea, I should
-    # remove those issues first.
-    do
-      id = (Object.keys ocr.issues)[~~(do Math.random * *)]
-    until ocr.issues[id].images.length
-    url = ocr.issues[id].images[~~(do Math.random * *)].url
+    # such an ugly line
+    #id = (Object.keys ocr.issues)[~~(do Math.random * *)]
+    url = ocr.issues[(Object.keys ocr.issues)[~~(do Math.random * *)]].images[~~(do Math.random * *)].url
     shasum = crypto.createHash \sha1
     shasum.update url + Date.now!
     token = shasum.digest \hex
@@ -109,7 +106,7 @@ main = ->
       res.send JSON.stringify(result{message: message}), 500
       return
 
-    console.log "[MAIL]: send image to " + requests[token].mail
+    console.log "[MAIL]: an image has already been sent to " + requests[token].mail
     res.send JSON.stringify true
 
   # Submit Page

@@ -1,6 +1,12 @@
 require! GitHubApi: \github
 
-# inspired by g0v/twlyparser/github.ls
+# OCRIssues
+#
+# This class is inspired by g0v/twlyparser/github.ls, I hope I can update issue
+# informations periodically.
+#
+# TODO:
+#   save issue informations locally
 class OCRIssues
   (auth) ->
     @auth = auth
@@ -14,14 +20,19 @@ class OCRIssues
         return
       console.log "[GITHUB]: request a page of issues"
       for issue in res
+        # skip empty issues, I think tags should be per-image not per-issue D:
+        continue unless (filter (label) ->
+          label.name is \empty
+        , issue.labels).length is 0
         title-pattern = /gazette (\d+) \- \d+ images/g
         link-pattern = /\!\[source\/.*\/(.*)\.(.*)\]\(\/\/(.*)\)/g
         if id = title-pattern.exec(issue.title)?[1]
-          @issues[issue.number] =
+          issue-info =
             id: id
             images: []
           while (links = link-pattern.exec issue.body)?
-            @issues[issue.number].images.push links{filename: 1, ext: 2, url: 3}
+            issue-info.images.push links{filename: 1, ext: 2, url: 3}
+          @issues[issue.number] = issue-info unless issue-info.images.length is 0
       if @github.has-next-page res
         @github.get-next-page res, next
       else
