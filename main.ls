@@ -13,24 +13,34 @@ do
 main = ->
   require! express
   require! params: \express-params
+
   app = express!
   params.extend app
-
   app.set "view engine", \jade
   app.use express.bodyParser!
   app.use express.static __dirname + \/public
+
   app.param \token /^[0-9A-Fa-f]{40}$/
 
-  # static pages
+  # Index Page
+  #
+  # This is the static page that you ask for a random issue image.
+  #
   # TODO:
-  # figure out how to use express 3 with client-side livescript
+  #   figure out how to use express 3 with client-side livescript
+
   #require! assets: \connect-assets
 
   do
     req, res <- app.get \/
     res.render \index
 
-  # manual OCR
+  # Request Image API
+  #
+  # Examples:
+  #   $curl -F "mail=notamail" http://localhost:3000/ => {"message": "Not a valid email"}
+  #   $curl -F "mail=thisisamail@gmail.com" http://localhost:3000/ => true
+
   require! email: \emailjs/email
   require! config-mail: \./config-mail
   require! crypto
@@ -55,7 +65,8 @@ main = ->
       res.send JSON.stringify(result{message: message}), 500
       return
 
-    # find a random issue with at least one image
+    # Find a random issue with at least one image, not a good idea, I should
+    # remove those issues first.
     do
       id = (Object.keys ocr.issues)[~~(do Math.random * *)]
     until ocr.issues[id].images.length
@@ -101,6 +112,13 @@ main = ->
     console.log "[MAIL]: send image to " + requests[token].mail
     res.send JSON.stringify true
 
+  # Submit Page
+  #
+  # This is the page that you can submit your OCR result.
+  #
+  # TODO:
+  #   should expired in 10 days
+  #   should edit previous result
   do
     req, res <- app.get \/:token
     request = requests[req.params.token]
@@ -114,6 +132,10 @@ main = ->
       console.log result
       res.send JSON.stringify(result{message: message}), 404
 
+  # Submit API
+  #
+  # Examples:
+  #   $curl -F "result=anarticle" http://localhost:3000/ => true
   do
     req, res <- app.post \/:token
     request = requests[req.params.token]
@@ -157,8 +179,17 @@ main = ->
       console.log result
       res.send JSON.stringify(result{message: message}), 404
 
-  # deprecated
-  # gazette sniper
+  # Gazette Sniper
+  #
+  # This part is deprecated.
+  #
+  # The original ideal of gazette sniper is to out-sourcing part of the OCR
+  # problem to the crowd, you can implement client in your game or as a blog
+  # widget, but there is a big problem, I can't evaluate results, I can not
+  # get useful information if no one use this service.
+  #
+  # So I leave it here as a log, maybe someday I will implement it.
+
   /*
   do
     req, res <- app.get \/sniper/target/
