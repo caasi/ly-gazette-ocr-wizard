@@ -21,6 +21,8 @@ class OCRIssues
       console.log "[GITHUB]: request a page of issues"
       for issue in res
         # skip empty issues, I think tags should be per-image not per-issue D:
+        # TODO:
+        #   configurable filters
         continue if any (.name is \empty), issue.labels
         title-pattern = /gazette (\d+) \- \d+ images/g
         link-pattern = /\!\[source\/.*\/(.*)\.(.*)\]\(\/\/(.*)\)/g
